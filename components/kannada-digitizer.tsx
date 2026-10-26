@@ -20,12 +20,6 @@ import {
   X,
 } from 'lucide-react'
 
-const demoText = `ಕನ್ನಡ ಭಾಷೆ ನಮ್ಮ ಸಂಸ್ಕೃತಿ ಮತ್ತು ಪರಂಪರೆಯ ಪ್ರತಿಬಿಂಬವಾಗಿದೆ.
-
-ಈ ಪಠ್ಯವನ್ನು ಸಂಪಾದಿಸಬಹುದು, ಹುಡುಕಬಹುದು ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಮಾಡಬಹುದು.
-
-Upload a document to begin extracting Kannada text.`
-
 type Status = 'idle' | 'processing' | 'ready' | 'error'
 
 export function KannadaDigitizer() {
@@ -47,7 +41,7 @@ export function KannadaDigitizer() {
 
   function chooseFile(selected: File | undefined) {
     if (!selected) return
-    if (!selected.type.startsWith('image/')) {
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/tiff'].includes(selected.type)) {
       setNotice('Please choose a JPG, PNG, WEBP, or TIFF image.')
       setStatus('error')
       return
@@ -76,18 +70,30 @@ export function KannadaDigitizer() {
     if (inputRef.current) inputRef.current.value = ''
   }
 
-  function extractText() {
+  async function extractText() {
     if (!file) {
       setNotice('Upload an image first, then start extraction.')
       setStatus('error')
       return
     }
+
     setStatus('processing')
     setNotice('')
-    window.setTimeout(() => {
+    setText('')
+
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      const response = await fetch('/api/ocr', { method: 'POST', body })
+      const result = (await response.json()) as { text?: string; message?: string }
+      if (!response.ok) throw new Error(result.message || 'OCR could not process this image.')
+      setText(result.text || '')
       setStatus('ready')
-      setNotice('Preview mode: connect the FastAPI OCR endpoint to process this image.')
-    }, 900)
+      setNotice(result.text ? 'OCR complete. Review the extracted text before downloading.' : 'OCR completed, but no text was detected.')
+    } catch (error) {
+      setStatus('error')
+      setNotice(error instanceof Error ? error.message : 'OCR could not process this image.')
+    }
   }
 
   async function copyText() {

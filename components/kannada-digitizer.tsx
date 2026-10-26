@@ -21,14 +21,17 @@ import {
 } from 'lucide-react'
 
 type Status = 'idle' | 'processing' | 'ready' | 'error'
+type ReviewStatus = 'not-reviewed' | 'in-review' | 'verified'
 
 export function KannadaDigitizer() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
   const [text, setText] = useState('')
+  const [originalOcrText, setOriginalOcrText] = useState('')
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<Status>('idle')
+  const [reviewStatus, setReviewStatus] = useState<ReviewStatus>('not-reviewed')
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
 
@@ -55,6 +58,8 @@ export function KannadaDigitizer() {
     setFile(selected)
     setPreviewUrl(URL.createObjectURL(selected))
     setText('')
+    setOriginalOcrText('')
+    setReviewStatus('not-reviewed')
     setNotice('')
     setStatus('idle')
   }
@@ -88,6 +93,8 @@ export function KannadaDigitizer() {
       const result = (await response.json()) as { text?: string; message?: string }
       if (!response.ok) throw new Error(result.message || 'OCR could not process this image.')
       setText(result.text || '')
+      setOriginalOcrText(result.text || '')
+      setReviewStatus('not-reviewed')
       setStatus('ready')
       setNotice(result.text ? 'OCR complete. Review the extracted text before downloading.' : 'OCR completed, but no text was detected.')
     } catch (error) {
@@ -180,7 +187,7 @@ export function KannadaDigitizer() {
               <div className="p-5 sm:p-7">
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-serif text-[21px] text-[#152b52]">2. Edit your text</h3><p className="mt-1 text-[12px] text-[#8c9699]">Review and refine the extracted content.</p></div><div className="flex items-center gap-2"><button onClick={copyText} disabled={!text} className="flex items-center gap-1.5 rounded-lg border border-[#dfe3e5] px-3 py-2 text-[11px] font-bold text-[#566273] transition-colors hover:bg-[#f7f8f6] disabled:opacity-40">{copied ? <Check className="size-3.5 text-[#31756d]" /> : <Clipboard className="size-3.5" />}{copied ? 'Copied' : 'Copy'}</button><button onClick={downloadText} disabled={!text} className="flex items-center gap-1.5 rounded-lg bg-[#e9b44c] px-3 py-2 text-[11px] font-bold text-[#152b52] transition-colors hover:bg-[#f0c365] disabled:opacity-40"><FileText className="size-3.5" /> Download .txt</button></div></div>
                 <div className="relative"><Search className="absolute left-3.5 top-3.5 size-4 text-[#a6b0ae]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search within your text…" className="h-11 w-full rounded-xl border border-[#e3e7e5] bg-[#fafbf9] pl-10 pr-24 text-[12px] outline-none transition-colors placeholder:text-[#a6b0ae] focus:border-[#72a99d] focus:ring-2 focus:ring-[#dceee8]" aria-label="Search within extracted text" />{query && <span className="absolute right-3.5 top-3.5 text-[11px] font-semibold text-[#80908c]">{matchCount} match{matchCount === 1 ? '' : 'es'}</span>}</div>
-                <div className="mt-3 overflow-hidden rounded-[18px] border border-[#e3e7e5] bg-[#fcfcfa]"><textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="Your extracted Kannada text will appear here…" className="min-h-[300px] w-full resize-y bg-transparent p-5 font-sans text-[19px] leading-[1.9] text-[#283951] outline-none placeholder:font-sans placeholder:text-[13px] placeholder:leading-normal placeholder:text-[#b3bcba]" aria-label="Editable extracted text" /><div className="flex items-center justify-between border-t border-[#edf0ef] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#a0aaa7]"><span>{text ? `${text.length} characters` : 'No text yet'}</span><span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[#e9b44c]" /> Editable</span></div></div>
+                <div className="mt-3 overflow-hidden rounded-[18px] border border-[#e3e7e5] bg-[#fcfcfa]"><textarea value={text} onChange={(event) => { setText(event.target.value); if (reviewStatus === 'verified') setReviewStatus('in-review') }} placeholder="Your extracted Kannada text will appear here…" className="min-h-[300px] w-full resize-y bg-transparent p-5 font-sans text-[19px] leading-[1.9] text-[#283951] outline-none placeholder:font-sans placeholder:text-[13px] placeholder:leading-normal placeholder:text-[#b3bcba]" aria-label="Editable extracted text" /><div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0ef] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#a0aaa7]"><span>{text ? `${[...text].length} characters` : 'No text yet'}</span><span className="flex items-center gap-1.5"><span className={`size-1.5 rounded-full ${reviewStatus === 'verified' ? 'bg-[#4eaa91]' : 'bg-[#e9b44c]'}`} />{reviewStatus === 'verified' ? 'Verified' : reviewStatus === 'in-review' ? 'In review' : 'Not reviewed'}</span></div></div>
                 {!text && <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-[#9da7a5]"><PanelRight className="size-3.5" /> Upload a document to begin</div>}
               </div>
             </div>

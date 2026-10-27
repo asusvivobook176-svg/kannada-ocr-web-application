@@ -35,7 +35,11 @@ export function KannadaDigitizer() {
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => () => previewUrl && URL.revokeObjectURL(previewUrl), [previewUrl])
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   const matchCount = useMemo(() => {
     if (!query.trim() || !text) return 0
